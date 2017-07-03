@@ -1,7 +1,8 @@
 import numpy
+import math
 from PIL import Image
 from moviepy.editor import *
-from moviepy.video.fx.all import crop
+# from moviepy.video.fx.all import crop
 
 videopath = "L:/originals/WindWakerT3P2.mpg"
 
@@ -32,8 +33,13 @@ topy = 50
 # this is not as black as the first line due to artifacts. not as easy to trust
 topy2 = 66
 
-def ispixelblack(array1, blackarray):
-    return numpy.all(numpy.less(array1, numpy.array(blackarray)))
+# define r for first two checks
+# use this formula: d >= sqrt(r^2 + g^2 + b^2)
+d1 = 10
+d2 = 12
+
+def ispixelblack(array1, d):
+    return d >= math.sqrt(array1[0]^2 + array1[1]^2 + array1[2]^2)
 
 def dumpframe(frame, filename="test.png"):
     print("Dumped frame")
@@ -66,7 +72,7 @@ for frame in video.iter_frames(with_times=True):
         # Check if frame has correct black bars
 
         avg = numpy.mean(frame[1][topy][topxstart:topxend], axis=0)
-        if not ispixelblack(avg, [10, 10.2, 10.1]):
+        if not ispixelblack(avg, d1):
             print("1 Not a cutscene because pixel", "is not black:", avg)
             iscutscene = False
             # break
@@ -75,7 +81,7 @@ for frame in video.iter_frames(with_times=True):
 
         #Check closer line
         avg = numpy.mean(frame[1][topy2][topxstart:topxend], axis=0)
-        if not ispixelblack(avg, [10, 10.1, 13.15]):
+        if not ispixelblack(avg, d2):
             print("2 Not a cutscene because pixel", "is not black:", avg)
             # if iscutscene:
             #     dumpframe(frame[1])
@@ -85,9 +91,12 @@ for frame in video.iter_frames(with_times=True):
         else:
             print("2 Passed", avg)
 
+
+
+        # if frame is a cutscene frame, dump it
         if iscutscene:
             avg = numpy.mean(frame[1], axis=(0, 1))
-            if ispixelblack(avg, [10, 10.1, 13.15]):
+            if ispixelblack(avg, d2):
                 print("3 Not a cutscene because pixel", "is not black:", avg)
                 iscutscene = False
             else:
