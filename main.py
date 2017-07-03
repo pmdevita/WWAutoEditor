@@ -29,8 +29,13 @@ topy = 50
 # this is not as black as the first line due to artifacts. not as easy to trust
 topy2 = 66
 
-def ispixelblack(array1, blackarray):
-    return numpy.all(numpy.less(array1, numpy.array(blackarray)))
+# define r for first two checks
+# use this formula: d >= sqrt(r^2 + g^2 + b^2)
+d1 = 10
+d2 = 12
+
+def ispixelblack(array1, d):
+    return d >= sqrt(array1[0]^2 + array1[1]^2 + array1[2]^2)
 
 def dumpframe(frame, filename="test.png"):
     print("Dumped frame")
@@ -63,7 +68,7 @@ for frame in video.iter_frames(with_times=True):
         # Check if frame has correct black bars
 
         lineavg = numpy.mean(frame[1][topy][topxstart:topxend], axis=0)
-        if not ispixelblack(lineavg, [10, 10.2, 10.1]):
+        if not ispixelblack(lineavg, d1):
             print("1 Not a cutscene because pixel", "is not black:", lineavg)
             iscutscene = False
             # break
@@ -72,7 +77,7 @@ for frame in video.iter_frames(with_times=True):
 
         #Check closer line
         lineavg = numpy.mean(frame[1][topy2][topxstart:topxend], axis=0)
-        if not ispixelblack(lineavg, [10, 10.1, 13.15]):
+        if not ispixelblack(lineavg, d2):
             print("2 Not a cutscene because pixel", "is not black:", lineavg)
             # if iscutscene:
             #     dumpframe(frame[1])
