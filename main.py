@@ -22,8 +22,8 @@ skip = 0
 framewidth = 720
 
 # top line that is always black during cutscene
-topstart = 184
-topwidth = 520
+topxstart = 184
+topxend = 520
 # remember, pixels start at 0
 topy = 50
 # this is not as black as the first line due to artifacts. not as easy to trust
@@ -42,8 +42,11 @@ def dumpframe(frame, filename="test.png"):
 
 
 for frame in video.iter_frames(with_times=True):
+    #frame[0] - timestamp, frame[1] - pixel array
     # frame[1][y][x] (from top left corner)
-    if frame[0] < 3 * 60 + 0:
+
+    # skip to 3 minutes in
+    if frame[0] < 5 * 60 + 10:
         continue
     # if frame[0] > 8 * 60 + 36:
     #     dumpframe(frame[1])
@@ -54,11 +57,12 @@ for frame in video.iter_frames(with_times=True):
         print(str(int((frame[0] - frame[0]%60) / 60)) + ":" + str(frame[0]%60))
 
         # Check if current frame meets conditions for being in cutscene
+
         iscutscene = True
 
         # Check if frame has correct black bars
 
-        lineavg = numpy.mean(frame[1][topy][topstart:topwidth], axis=0)
+        lineavg = numpy.mean(frame[1][topy][topxstart:topxend], axis=0)
         if not ispixelblack(lineavg, [10, 10.2, 10.1]):
             print("1 Not a cutscene because pixel", "is not black:", lineavg)
             iscutscene = False
@@ -67,8 +71,8 @@ for frame in video.iter_frames(with_times=True):
             print("1 Passed", lineavg)
 
         #Check closer line
-        lineavg = numpy.mean(frame[1][topy2][topstart:topwidth], axis=0)
-        if not ispixelblack(lineavg, [10, 10.1, 13.1]):
+        lineavg = numpy.mean(frame[1][topy2][topxstart:topxend], axis=0)
+        if not ispixelblack(lineavg, [10, 10.1, 13.15]):
             print("2 Not a cutscene because pixel", "is not black:", lineavg)
             # if iscutscene:
             #     dumpframe(frame[1])
@@ -80,15 +84,12 @@ for frame in video.iter_frames(with_times=True):
 
 
 
-        # if we have found a new cutscene, find first frame, crossfade, then set flag to
-        #   begin looking for outfade
+        # if frame is a cutscene frame, dump it
         if iscutscene:
+            # you can type in a number and it will skip that many frames
             if not skip:
                 dumpframe(frame[1])
                 previouscutscene = True
-                # backtrack for first frame
-                # for i in lastframes:
-                #     print(i[0])
                 skip = input()
                 try:
                     skip = int(skip)
@@ -96,12 +97,17 @@ for frame in video.iter_frames(with_times=True):
                     pass
             if type(skip) == int:
                 skip -= 1
+        # if the last frame was a cutscene, dump this frame so we can see why it isn't
         elif previouscutscene:
             previouscutscene = False
             print("Did not detect cutscene")
             skip = 0
             newframe = numpy.copy(frame[1])
-            for i in newframe[topy2][topstart:topwidth]:
+            for i in newframe[topy][topxstart:topxend]:
+                i[0] = 255
+                i[1] = 255
+                i[2] = 255
+            for i in newframe[topy2][topxstart:topxend]:
                 i[0] = 255
                 i[1] = 255
                 i[2] = 255
