@@ -16,6 +16,9 @@ findingend = False
 previouscutscene = False
 lastframes = []
 skip = 0
+cutscenes = []
+cutscene_frame_counter = 0
+ingame_frame_counter = 0
 
 # Constants related to the video
 
@@ -29,13 +32,8 @@ topy = 50
 # this is not as black as the first line due to artifacts. not as easy to trust
 topy2 = 66
 
-# define r for first two checks
-# use this formula: d >= sqrt(r^2 + g^2 + b^2)
-d1 = 10
-d2 = 12
-
-def ispixelblack(array1, d):
-    return d >= sqrt(array1[0]^2 + array1[1]^2 + array1[2]^2)
+def ispixelblack(array1, blackarray):
+    return numpy.all(numpy.less(array1, numpy.array(blackarray)))
 
 def dumpframe(frame, filename="test.png"):
     print("Dumped frame")
@@ -51,7 +49,7 @@ for frame in video.iter_frames(with_times=True):
     # frame[1][y][x] (from top left corner)
 
     # skip to 3 minutes in
-    if frame[0] < 5 * 60 + 10:
+    if frame[0] < 6 * 60 + 10:
         continue
     # if frame[0] > 8 * 60 + 36:
     #     dumpframe(frame[1])
@@ -67,30 +65,48 @@ for frame in video.iter_frames(with_times=True):
 
         # Check if frame has correct black bars
 
-        lineavg = numpy.mean(frame[1][topy][topxstart:topxend], axis=0)
-        if not ispixelblack(lineavg, d1):
-            print("1 Not a cutscene because pixel", "is not black:", lineavg)
+        avg = numpy.mean(frame[1][topy][topxstart:topxend], axis=0)
+        if not ispixelblack(avg, [10, 10.2, 10.1]):
+            print("1 Not a cutscene because pixel", "is not black:", avg)
             iscutscene = False
             # break
         else:
-            print("1 Passed", lineavg)
+            print("1 Passed", avg)
 
         #Check closer line
-        lineavg = numpy.mean(frame[1][topy2][topxstart:topxend], axis=0)
-        if not ispixelblack(lineavg, d2):
-            print("2 Not a cutscene because pixel", "is not black:", lineavg)
+        avg = numpy.mean(frame[1][topy2][topxstart:topxend], axis=0)
+        if not ispixelblack(avg, [10, 10.1, 13.15]):
+            print("2 Not a cutscene because pixel", "is not black:", avg)
             # if iscutscene:
             #     dumpframe(frame[1])
             #     null = input()
             iscutscene = False
             #break
         else:
-            print("2 Passed", lineavg)
+            print("2 Passed", avg)
 
-
-
-        # if frame is a cutscene frame, dump it
         if iscutscene:
+            avg = numpy.mean(frame[1], axis=(0, 1))
+            if ispixelblack(avg, [10, 10.1, 13.15]):
+                print("3 Not a cutscene because pixel", "is not black:", avg)
+                iscutscene = False
+            else:
+                print("3 Passed", avg)
+
+        # if frame is a cutscene frame
+        if iscutscene:
+            # check if last ingame frame was just a blip
+            if cutscene_frame_counter == 0 and ingame_frame_counter <= 1 and len(cutscenes) > 0:
+                print("Seems like last frame was a blip, added to cutscene")
+                cutscene_frame_counter = cutscenes[len(cutscenes) - 1][2] + ingame_frame_counter
+                ingame_frame_counter = 0
+            elif cutscene_frame_counter == 0:
+                cutscenes.append([frame[0], None, None])
+                ingame_frame_counter = 0
+                cutscene_frame_counter = 0
+            cutscene_frame_counter += 1
+
+            print("cutscene frame counter", cutscene_frame_counter)
             # you can type in a number and it will skip that many frames
             if not skip:
                 dumpframe(frame[1])
@@ -102,10 +118,15 @@ for frame in video.iter_frames(with_times=True):
                     pass
             if type(skip) == int:
                 skip -= 1
-        # if the last frame was a cutscene, dump this frame so we can see why it isn't
+        # if frame is ingame but last frame was cutscene
         elif previouscutscene:
+            cutscenes[len(cutscenes) - 1][1] = frame[0]
+            cutscenes[len(cutscenes) - 1][2] = cutscene_frame_counter
             previouscutscene = False
-            print("Did not detect cutscene")
+            print("Did not detect cutscene", "cutscene frame counter", cutscene_frame_counter)
+            ingame_frame_counter = 1
+            cutscene_frame_counter = 0
+
             skip = 0
             newframe = numpy.copy(frame[1])
             for i in newframe[topy][topxstart:topxend]:
@@ -119,6 +140,9 @@ for frame in video.iter_frames(with_times=True):
             dumpframe(newframe, "test2.png")
             dumpframe(frame[1])
             null = input()
+        # if frame is ingame
+        else:
+            ingame_frame_counter += 1
 
 
 
