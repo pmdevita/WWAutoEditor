@@ -10,6 +10,7 @@ videopath = "L:/originals/WindWakerT3P2.mpg"
 video = VideoFileClip(videopath)
 
 #croppedvideo = crop(video, x1=28, y1=76, width=660, height=344)
+
 lookahead = False
 findingend = False
 previouscutscene = False
